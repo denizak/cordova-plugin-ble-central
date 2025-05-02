@@ -43,6 +43,7 @@
 
 @property (strong, nonatomic) NSMutableDictionary *peripherals;
 @property (strong, nonatomic) CBCentralManager *manager;
+@property (strong, nonatomic) NSString *writeDescriptorCallbackId;
 
 - (void)startScanWithOptions:(CDVInvokedUrlCommand *)command;
 - (void)stopScan:(CDVInvokedUrlCommand *)command;

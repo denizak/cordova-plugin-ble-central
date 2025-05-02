@@ -276,6 +276,16 @@ module.exports = {
     readBondState: function (device_id, success, failure) {
         exec(success, failure, 'BLE', 'readBondState', [device_id]);
     },
+
+    writeDescriptor: function (device_id, service_uuid, characteristic_uuid, descriptor_uuid, value, success, failure) {
+        exec(success, failure, 'BLECentral', 'writeDescriptor', [
+            device_id,
+            service_uuid,
+            characteristic_uuid,
+            descriptor_uuid,
+            value,
+        ]);
+    },
 };
 
 module.exports.withPromises = {
@@ -477,6 +487,20 @@ module.exports.withPromises = {
     readBondState: function (device_id) {
         return new Promise(function (resolve, reject) {
             module.exports.readBondState(device_id, resolve, reject);
+        });
+    },
+
+    writeDescriptor: function (device_id, service_uuid, characteristic_uuid, descriptor_uuid, value, success, failure) {
+        return new Promise(function (resolve, reject) {
+            module.exports.writeDescriptor(
+                device_id,
+                service_uuid,
+                characteristic_uuid,
+                descriptor_uuid,
+                value,
+                resolve,
+                reject
+            );
         });
     },
 };

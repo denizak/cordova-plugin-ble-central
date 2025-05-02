@@ -75,6 +75,54 @@
 
 #pragma mark - Cordova Plugin Methods
 
+- (void)writeDescriptor:(CDVInvokedUrlCommand *)command {
+    NSString *peripheralUUID = [command.arguments objectAtIndex:0];
+    NSString *serviceUUID = [command.arguments objectAtIndex:1];
+    NSString *characteristicUUID = [command.arguments objectAtIndex:2];
+    NSString *descriptorUUID = [command.arguments objectAtIndex:3];
+    NSData *value = [[command.arguments objectAtIndex:4] dataUsingEncoding:NSUTF8StringEncoding];
+
+    CBPeripheral *peripheral = [self getPeripheralByUUID:peripheralUUID];
+    if (peripheral == nil) {
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Peripheral not found"];
+        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+        return;
+    }
+
+    CBService *service = [self findServiceFromUUID:[CBUUID UUIDWithString:serviceUUID] peripheral:peripheral];
+    CBCharacteristic *characteristic = [self findCharacteristicFromUUID:[CBUUID UUIDWithString:characteristicUUID] service:service];
+    CBDescriptor *targetDescriptor = nil;
+
+    for (CBDescriptor *descriptor in characteristic.descriptors) {
+        if ([descriptor.UUID.UUIDString isEqualToString:descriptorUUID]) {
+            targetDescriptor = descriptor;
+            break;
+        }
+    }
+
+    if (targetDescriptor) {
+        self.writeDescriptorCallbackId = command.callbackId;
+        [peripheral writeValue:value forDescriptor:targetDescriptor];
+    } else {
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Descriptor not found"];
+        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+    }
+}
+
+// Implement delegate method to handle write response
+- (void)peripheral:(CBPeripheral *)peripheral didWriteValueForDescriptor:(CBDescriptor *)descriptor error:(NSError *)error {
+    if (self.writeDescriptorCallbackId != nil) {
+        if (error) {
+            CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.localizedDescription];
+            [self.commandDelegate sendPluginResult:result callbackId:self.writeDescriptorCallbackId];
+        } else {
+            CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+            [self.commandDelegate sendPluginResult:result callbackId:self.writeDescriptorCallbackId];
+        }
+        self.writeDescriptorCallbackId = nil;
+    }
+}
+
 - (void)centralManager:(CBCentralManager *)central willRestoreState:(NSDictionary<NSString *,id> *)state {
     restoredState = state;
 }
