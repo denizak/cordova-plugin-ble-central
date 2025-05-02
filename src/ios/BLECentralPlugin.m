@@ -82,14 +82,14 @@
     NSString *descriptorUUID = [command.arguments objectAtIndex:3];
     NSData *value = [[command.arguments objectAtIndex:4] dataUsingEncoding:NSUTF8StringEncoding];
 
-    CBPeripheral *peripheral = [self getPeripheralByUUID:peripheralUUID];
+    CBPeripheral *peripheral = [self findPeripheralByUUID:peripheralUUID];
     if (peripheral == nil) {
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Peripheral not found"];
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         return;
     }
 
-    CBService *service = [self findServiceFromUUID:[CBUUID UUIDWithString:serviceUUID] peripheral:peripheral];
+    CBService *service = [self findServiceFromUUID:[CBUUID UUIDWithString:serviceUUID] p:peripheral];
     CBCharacteristic *characteristic = [self findCharacteristicFromUUID:[CBUUID UUIDWithString:characteristicUUID] service:service];
     CBDescriptor *targetDescriptor = nil;
 
