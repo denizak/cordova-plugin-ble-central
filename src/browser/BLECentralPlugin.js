@@ -135,6 +135,28 @@ module.exports = {
             failure(new Error("device not connected"));
         }
     },
+    writeDescriptor: function (deviceId, service_uuid, characteristic_uuid, descriptor_uuid, data, success, failure) {
+        if (this.deviceInfos.has(deviceId)) {
+            this.deviceInfos.get(deviceId).server.getPrimaryService(formatUUID(service_uuid))
+                .then((service) => {
+                    return service.getCharacteristic(formatUUID(characteristic_uuid));
+                })
+                .then((characteristic) => {
+                    return characteristic.getDescriptor(formatUUID(descriptor_uuid));
+                })
+                .then((descriptor) => {
+                    return descriptor.writeValue(data);
+                })
+                .then((result) => {
+                    success(result);
+                })
+                .catch((error) => {
+                    if (failure) failure(error);
+                });
+        } else if (failure) {
+            failure(new Error('device not connected'));
+        }
+    },
     startNotification: function(deviceId, service_uuid, characteristic_uuid, success, failure) {
          if (this.deviceInfos.has(deviceId)) {
             this.deviceInfos.get(deviceId).server.getPrimaryService(formatUUID(service_uuid)).then(service => {

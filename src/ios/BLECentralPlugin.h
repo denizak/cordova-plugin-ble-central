@@ -57,6 +57,7 @@
 - (void)read:(CDVInvokedUrlCommand *)command;
 - (void)write:(CDVInvokedUrlCommand *)command;
 - (void)writeWithoutResponse:(CDVInvokedUrlCommand *)command;
+- (void)writeDescriptor:(CDVInvokedUrlCommand *)command;
 
 - (void)startNotification:(CDVInvokedUrlCommand *)command;
 - (void)stopNotification:(CDVInvokedUrlCommand *)command;

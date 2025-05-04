@@ -76,6 +76,8 @@
 #pragma mark - Cordova Plugin Methods
 
 - (void)writeDescriptor:(CDVInvokedUrlCommand *)command {
+    NSLog(@"writeDescriptor started");
+
     NSString *peripheralUUID = [command.arguments objectAtIndex:0];
     NSString *serviceUUID = [command.arguments objectAtIndex:1];
     NSString *characteristicUUID = [command.arguments objectAtIndex:2];
@@ -84,6 +86,7 @@
 
     CBPeripheral *peripheral = [self findPeripheralByUUID:[[NSUUID alloc] initWithUUIDString: peripheralUUID]];
     if (peripheral == nil) {
+        NSLog(@"peripheral is nil");
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Peripheral not found"];
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
         return;
@@ -103,10 +106,15 @@
     if (targetDescriptor) {
         self.writeDescriptorCallbackId = command.callbackId;
         [peripheral writeValue:value forDescriptor:targetDescriptor];
+
+        NSLog(@"targetDescriptor: %@", targetDescriptor);
     } else {
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Descriptor not found"];
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+
+        NSLog(@"targetDescriptor in null");   
     }
+    NSLog(@"targetDescriptor ended");
 }
 
 // Implement delegate method to handle write response

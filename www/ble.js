@@ -278,7 +278,7 @@ module.exports = {
     },
 
     writeDescriptor: function (device_id, service_uuid, characteristic_uuid, descriptor_uuid, value, success, failure) {
-        exec(success, failure, 'BLECentral', 'writeDescriptor', [
+        exec(success, failure, 'BLE', 'writeDescriptor', [
             device_id,
             service_uuid,
             characteristic_uuid,
