@@ -149,6 +149,13 @@ declare namespace BLECentralPlugin {
             characteristic_uuid: string,
             value: ArrayBuffer
         ): Promise<void>;
+        writeDescriptor(
+            device_id: string,
+            service_uuid: string,
+            characteristic_uuid: string,
+            descriptor_uuid: string,
+            data: ArrayBuffer
+        ): Promise<void>;
 
         /* Register to be notified when the value of a characteristic changes. */
         startNotification(
@@ -259,6 +266,16 @@ declare namespace BLECentralPlugin {
             device_id: string,
             service_uuid: string,
             characteristic_uuid: string,
+            data: ArrayBuffer,
+            success?: () => any,
+            failure?: (error: string) => any
+        ): void;
+
+        writeDescriptor(
+            device_id: string,
+            service_uuid: string,
+            characteristic_uuid: string,
+            descriptor_uuid: string,
             data: ArrayBuffer,
             success?: () => any,
             failure?: (error: string) => any
