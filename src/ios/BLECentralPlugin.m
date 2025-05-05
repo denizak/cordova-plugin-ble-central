@@ -82,7 +82,23 @@
     NSString *serviceUUID = [command.arguments objectAtIndex:1];
     NSString *characteristicUUID = [command.arguments objectAtIndex:2];
     NSString *descriptorUUID = [command.arguments objectAtIndex:3];
-    NSData *value = [[command.arguments objectAtIndex:4] dataUsingEncoding:NSUTF8StringEncoding];
+    
+    id valueArg = [command.arguments objectAtIndex:4]; // Get the raw argument
+    NSData *value = nil;
+
+    // Try decoding binary data (handles ArrayBuffer passed as Base64)
+    id decodedValue = [self tryDecodeBinaryData:valueArg];
+    if (decodedValue != nil && [decodedValue isKindOfClass:[NSData class]]) {
+        value = (NSData *)decodedValue;
+    } else if ([valueArg isKindOfClass:[NSData class]]) { // Handle if passed directly as NSData
+         value = (NSData *)valueArg;
+    } else {
+        // Handle error: Invalid data type
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid data format for descriptor value. Expected ArrayBuffer."];
+        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+        NSLog(@"writeDescriptor ended - Invalid data format");
+        return;
+    }
 
     CBPeripheral *peripheral = [self findPeripheralByUUID:[[NSUUID alloc] initWithUUIDString: peripheralUUID]];
     if (peripheral == nil) {
@@ -119,11 +135,14 @@
 
 // Implement delegate method to handle write response
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForDescriptor:(CBDescriptor *)descriptor error:(NSError *)error {
+    NSLog(@"didWriteValueForDescriptor");
     if (self.writeDescriptorCallbackId != nil) {
         if (error) {
+            NSLog(@"Error writing descriptor: %@", error.localizedDescription);
             CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:error.localizedDescription];
             [self.commandDelegate sendPluginResult:result callbackId:self.writeDescriptorCallbackId];
         } else {
+            NSLog(@"Descriptor written successfully");
             CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
             [self.commandDelegate sendPluginResult:result callbackId:self.writeDescriptorCallbackId];
         }
