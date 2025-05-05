@@ -490,7 +490,7 @@ module.exports.withPromises = {
         });
     },
 
-    writeDescriptor: function (device_id, service_uuid, characteristic_uuid, descriptor_uuid, value, success, failure) {
+    writeDescriptor: function (device_id, service_uuid, characteristic_uuid, descriptor_uuid, value) {
         return new Promise(function (resolve, reject) {
             module.exports.writeDescriptor(
                 device_id,
