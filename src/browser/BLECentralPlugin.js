@@ -135,7 +135,8 @@ module.exports = {
             failure(new Error("device not connected"));
         }
     },
-    writeDescriptor: function (deviceId, service_uuid, characteristic_uuid, descriptor_uuid, data, success, failure) {
+    writeDescriptor: function (deviceId, service_uuid, characteristic_uuid, descriptor_uuid, value, success, failure) {
+        console.log('writeDescriptor in BLECentralPlugin.js');
         if (this.deviceInfos.has(deviceId)) {
             this.deviceInfos.get(deviceId).server.getPrimaryService(formatUUID(service_uuid))
                 .then((service) => {
@@ -145,7 +146,7 @@ module.exports = {
                     return characteristic.getDescriptor(formatUUID(descriptor_uuid));
                 })
                 .then((descriptor) => {
-                    return descriptor.writeValue(data);
+                    return descriptor.writeValue(value);
                 })
                 .then((result) => {
                     success(result);

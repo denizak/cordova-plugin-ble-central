@@ -154,7 +154,7 @@ declare namespace BLECentralPlugin {
             service_uuid: string,
             characteristic_uuid: string,
             descriptor_uuid: string,
-            data: ArrayBuffer
+            value: ArrayBuffer
         ): Promise<void>;
 
         /* Register to be notified when the value of a characteristic changes. */
@@ -276,7 +276,7 @@ declare namespace BLECentralPlugin {
             service_uuid: string,
             characteristic_uuid: string,
             descriptor_uuid: string,
-            data: ArrayBuffer,
+            value: ArrayBuffer,
             success?: () => any,
             failure?: (error: string) => any
         ): void;

@@ -278,6 +278,7 @@ module.exports = {
     },
 
     writeDescriptor: function (device_id, service_uuid, characteristic_uuid, descriptor_uuid, value, success, failure) {
+        console.log('writeDescriptor in www/ble.js');
         exec(success, failure, 'BLE', 'writeDescriptor', [
             device_id,
             service_uuid,
@@ -491,6 +492,7 @@ module.exports.withPromises = {
     },
 
     writeDescriptor: function (device_id, service_uuid, characteristic_uuid, descriptor_uuid, value) {
+        console.log('writeDescriptor promise in www/ble.js');
         return new Promise(function (resolve, reject) {
             module.exports.writeDescriptor(
                 device_id,
