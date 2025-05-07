@@ -403,7 +403,7 @@
         [stopNotificationCallbacks removeObjectForKey:key];
 
         [peripheral setNotifyValue:YES forCharacteristic:characteristic];
-
+        NSLog(@"setNotifyValue:YES for characteristic %@", characteristic.UUID.UUIDString);
     }
 
 }
@@ -922,12 +922,14 @@
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
-    NSLog(@"didUpdateValueForCharacteristic");
+    NSLog(@"didUpdateValueForCharacteristic %@", characteristic.UUID.UUIDString);
 
     NSString *key = [self keyForPeripheral: peripheral andCharacteristic:characteristic];
     NSString *notifyCallbackId = [notificationCallbacks objectForKey:key];
+    NSLog(@"notifyCallbackId %@", notifyCallbackId);
 
     if (notifyCallbackId) {
+        NSLog(@"has notifyCallbackId %@", notifyCallbackId);
         NSData *data = characteristic.value; // send RAW data to Javascript
 
         CDVPluginResult *pluginResult = nil;
@@ -943,8 +945,9 @@
     }
 
     NSString *readCallbackId = [readCallbacks objectForKey:key];
-
+    NSLog(@"readCallbackId %@", readCallbackId);
     if(readCallbackId) {
+        NSLog(@"has readCallbackId %@", readCallbackId);
         NSData *data = characteristic.value; // send RAW data to Javascript
         CDVPluginResult *pluginResult = nil;
         
