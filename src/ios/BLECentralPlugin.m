@@ -970,7 +970,8 @@
     NSString *stopNotificationCallbackId = [stopNotificationCallbacks objectForKey:key];
 
     CDVPluginResult *pluginResult = nil;
-    
+    NSLog(@"didUpdateNotificationStateForCharacteristic %@", characteristic.UUID.UUIDString);
+
     if (stopNotificationCallbackId) {
         if (!characteristic.isNotifying) {
             // successfully stopped notifications
@@ -1000,6 +1001,8 @@
             
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"registered"];
             [pluginResult setKeepCallbackAsBool:TRUE]; // keep for notification
+
+            NSLog(@"Notifications started for characteristic %@", characteristic.UUID.UUIDString);
         } else {
             if (error) {
                 // error: something went wrong
