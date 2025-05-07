@@ -112,7 +112,9 @@
     CBCharacteristic *characteristic = [self findCharacteristicFromUUID:[CBUUID UUIDWithString:characteristicUUID] service:service];
     CBDescriptor *targetDescriptor = nil;
 
+    NSLog(@"trying to find descriptor of %@", descriptorUUID);
     for (CBDescriptor *descriptor in characteristic.descriptors) {
+        NSLog(@"available descriptor: %@", descriptor.UUID.UUIDString);
         if ([descriptor.UUID.UUIDString isEqualToString:descriptorUUID]) {
             targetDescriptor = descriptor;
             break;
@@ -1119,6 +1121,7 @@
     for(int i=0; i < service.characteristics.count; i++)
     {
         CBCharacteristic *c = [service.characteristics objectAtIndex:i];
+        NSLog(@"Found characteristic %@", c.UUID.UUIDString);
         if ((c.properties & prop) != 0x0 && [c.UUID.UUIDString isEqualToString: UUID.UUIDString]) {
             return c;
         }
@@ -1128,10 +1131,11 @@
 
 // Find a characteristic in service by UUID
 -(CBCharacteristic *) findCharacteristicFromUUID:(CBUUID *)UUID service:(CBService*)service {
-    NSLog(@"Looking for %@", UUID);
+    NSLog(@"Looking for characteristic %@ in service %@", UUID.UUIDString, service.UUID.UUIDString);
     for(int i=0; i < service.characteristics.count; i++)
     {
         CBCharacteristic *c = [service.characteristics objectAtIndex:i];
+        NSLog(@"Found characteristic %@", c.UUID.UUIDString);
         if ([c.UUID.UUIDString isEqualToString: UUID.UUIDString]) {
             return c;
         }
