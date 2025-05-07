@@ -922,14 +922,14 @@
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
-    NSLog(@"didUpdateValueForCharacteristic %@", characteristic.UUID.UUIDString);
+    // NSLog(@"didUpdateValueForCharacteristic %@", characteristic.UUID.UUIDString);
 
     NSString *key = [self keyForPeripheral: peripheral andCharacteristic:characteristic];
     NSString *notifyCallbackId = [notificationCallbacks objectForKey:key];
-    NSLog(@"notifyCallbackId %@", notifyCallbackId);
+    // NSLog(@"notifyCallbackId %@", notifyCallbackId);
 
     if (notifyCallbackId) {
-        NSLog(@"has notifyCallbackId %@", notifyCallbackId);
+        // NSLog(@"has notifyCallbackId %@", notifyCallbackId);
         NSData *data = characteristic.value; // send RAW data to Javascript
 
         CDVPluginResult *pluginResult = nil;
@@ -945,9 +945,9 @@
     }
 
     NSString *readCallbackId = [readCallbacks objectForKey:key];
-    NSLog(@"readCallbackId %@", readCallbackId);
+    // NSLog(@"readCallbackId %@", readCallbackId);
     if(readCallbackId) {
-        NSLog(@"has readCallbackId %@", readCallbackId);
+        // NSLog(@"has readCallbackId %@", readCallbackId);
         NSData *data = characteristic.value; // send RAW data to Javascript
         CDVPluginResult *pluginResult = nil;
         
@@ -970,7 +970,7 @@
     NSString *stopNotificationCallbackId = [stopNotificationCallbacks objectForKey:key];
 
     CDVPluginResult *pluginResult = nil;
-    NSLog(@"didUpdateNotificationStateForCharacteristic %@", characteristic.UUID.UUIDString);
+    // NSLog(@"didUpdateNotificationStateForCharacteristic %@", characteristic.UUID.UUIDString);
 
     if (stopNotificationCallbackId) {
         if (!characteristic.isNotifying) {
@@ -1141,7 +1141,7 @@
     for(int i=0; i < service.characteristics.count; i++)
     {
         CBCharacteristic *c = [service.characteristics objectAtIndex:i];
-        NSLog(@"Found characteristic %@", c.UUID.UUIDString);
+        // NSLog(@"Found characteristic %@", c.UUID.UUIDString);
         if ([c.UUID.UUIDString isEqualToString: UUID.UUIDString]) {
             return c;
         }
