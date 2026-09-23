@@ -34,6 +34,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageInfo;
 import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.Looper;
@@ -104,6 +105,8 @@ public class BLECentralPlugin extends CordovaPlugin {
     private static final String ENABLE = "enable";
 
     private static final String START_STATE_NOTIFICATIONS = "startStateNotifications";
+    private static final String DEVICE_DIAGNOSTICS = "deviceDiagnostics";
+    private static final String GATT_DIAGNOSTICS = "gattDiagnostics";
     private static final String STOP_STATE_NOTIFICATIONS = "stopStateNotifications";
 
     // Android-only diagnostic actions. The runner deliberately bypasses Peripheral.
@@ -123,7 +126,7 @@ public class BLECentralPlugin extends CordovaPlugin {
     CallbackContext discoverCallback;
     private CallbackContext enableBluetoothCallback;
 
-    private static final String TAG = "BLEPlugin";
+    private static final String TAG = "BLECentralPlugin";
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
 
     BluetoothAdapter bluetoothAdapter;
@@ -569,6 +572,17 @@ public class BLECentralPlugin extends CordovaPlugin {
 
             getBondedDevices(callbackContext);
 
+        } else if (action.equals(DEVICE_DIAGNOSTICS)) {
+
+            deviceDiagnostics(callbackContext);
+
+        } else if (action.equals(GATT_DIAGNOSTICS)) {
+
+            String macAddress = args.getString(0);
+            JSONObject options = args.optJSONObject(1);
+            boolean clearAfterRead = options != null && options.optBoolean("clear", false);
+            gattDiagnostics(callbackContext, macAddress, clearAfterRead);
+
         } else if (action.equals(OPEN_L2CAP)) {
 
             String macAddress = args.getString(0);
@@ -634,6 +648,123 @@ public class BLECentralPlugin extends CordovaPlugin {
 
     private boolean isBlockedByDiagnosticProbe(String action) {
         return action.equals(CONNECT) || action.equals(AUTOCONNECT) || action.equals(START_SCAN_WITH_OPTIONS);
+    }
+
+    /**
+     * Reports the platform facts needed to debug OEM BLE-stack issues (field 2026-09,
+     * i.safe IS440 / Qualcomm QCM6490): OS build, security patch level, SDK, Bluetooth
+     * adapter state and LE capabilities, and the bonded-device count. Deliberately
+     * excludes Build.MANUFACTURER / MODEL / FINGERPRINT — the exported-log sanitizer
+     * removes the phone model from the header by design, so the shared log must not
+     * reintroduce it. Adapter calls are individually guarded: this action must never
+     * fail the connection flow, and BLUETOOTH_CONNECT-gated calls (bonded devices,
+     * PHY support) degrade to "unknown" when the permission is missing.
+     */
+    private void deviceDiagnostics(CallbackContext callbackContext) {
+        JSONObject info = new JSONObject();
+        try {
+            info.put("osRelease", Build.VERSION.RELEASE);
+            info.put("sdkInt", Build.VERSION.SDK_INT);
+            info.put("securityPatch", Build.VERSION.SECURITY_PATCH == null ? "unknown" : Build.VERSION.SECURITY_PATCH);
+            info.put("osBuild", Build.DISPLAY == null ? "unknown" : Build.DISPLAY);
+            info.put("buildTime", Build.TIME);
+
+            putBluetoothStackInfo(info);
+
+            if (bluetoothAdapter != null) {
+                try {
+                    info.put("btEnabled", bluetoothAdapter.isEnabled());
+                } catch (SecurityException e) {
+                    info.put("btEnabled", "unknown");
+                }
+                putAdapterCapability(info, "offloadedFilteringSupported", bluetoothAdapter.isOffloadedFilteringSupported());
+                putAdapterCapability(info, "offloadedScanBatchingSupported", bluetoothAdapter.isOffloadedScanBatchingSupported());
+                if (Build.VERSION.SDK_INT >= 26 /*O*/) {
+                    putAdapterCapability(info, "le2MPhySupported", bluetoothAdapter.isLe2MPhySupported());
+                    putAdapterCapability(info, "leCodedPhySupported", bluetoothAdapter.isLeCodedPhySupported());
+                    putAdapterCapability(info, "leExtendedAdvertisingSupported", bluetoothAdapter.isLeExtendedAdvertisingSupported());
+                    putAdapterCapability(info, "lePeriodicAdvertisingSupported", bluetoothAdapter.isLePeriodicAdvertisingSupported());
+                }
+                try {
+                    info.put("bondedDeviceCount", bluetoothAdapter.getBondedDevices() == null ? -1 : bluetoothAdapter.getBondedDevices().size());
+                } catch (SecurityException e) {
+                    info.put("bondedDeviceCount", -1);
+                }
+            } else {
+                info.put("btAdapterAvailable", false);
+            }
+
+            callbackContext.success(info);
+        } catch (JSONException e) {
+            callbackContext.error("deviceDiagnostics failed: " + e.getMessage());
+        }
+    }
+
+    /** Exposes the peripheral's bounded, identifier-free native GATT event history. */
+    private void gattDiagnostics(CallbackContext callbackContext, String macAddress, boolean clearAfterRead) {
+        Peripheral peripheral = peripherals.get(macAddress);
+        callbackContext.success(peripheral == null ? new JSONArray() : peripheral.getGattDiagnostics(clearAfterRead));
+    }
+
+    private void putAdapterCapability(JSONObject info, String key, boolean value) {
+        try {
+            info.put(key, value);
+        } catch (SecurityException e) {
+            try {
+                info.put(key, "unknown");
+            } catch (JSONException jsonError) {
+                LOG.w(TAG, "deviceDiagnostics: could not record " + key);
+            }
+        } catch (JSONException e) {
+            LOG.w(TAG, "deviceDiagnostics: could not record " + key);
+        }
+    }
+
+    /**
+     * Records factual Bluetooth APK/APEX package details plus Build.VERSION.BASE_OS.
+     * Package names vary by Android release and signer, so diagnostics probe known
+     * APEX names instead of inferring GMS status from one package. Every lookup is
+     * guarded: diagnostics must never fail the connection flow.
+     */
+    private void putBluetoothStackInfo(JSONObject info) {
+        PackageManager pm = cordova.getContext().getPackageManager();
+        putBluetoothPackageInfo(info, pm, "com.android.bluetooth", 0, "btApp");
+
+        boolean apexDetected = false;
+        if (Build.VERSION.SDK_INT >= 29) {
+            String[] apexPackages = {"com.google.android.bt", "com.android.btservices", "com.android.bt"};
+            for (String packageName : apexPackages) {
+                if (putBluetoothPackageInfo(info, pm, packageName, PackageManager.MATCH_APEX, "btApex")) {
+                    apexDetected = true;
+                    break;
+                }
+            }
+        }
+        putBluetoothValue(info, "btApexDetected", apexDetected);
+        putBluetoothValue(info, "baseOs", Build.VERSION.BASE_OS == null ? "unknown" : Build.VERSION.BASE_OS);
+    }
+
+    private boolean putBluetoothPackageInfo(JSONObject info, PackageManager pm, String packageName, int flags, String prefix) {
+        try {
+            PackageInfo packageInfo = pm.getPackageInfo(packageName, flags);
+            putBluetoothValue(info, prefix + "Package", packageName);
+            putBluetoothValue(info, prefix + "Version", packageInfo.versionName == null ? "unknown" : packageInfo.versionName);
+            putBluetoothValue(info, prefix + "VersionCode", packageInfo.versionCode);
+            return true;
+        } catch (PackageManager.NameNotFoundException ignored) {
+            return false;
+        } catch (Exception e) {
+            LOG.w(TAG, "deviceDiagnostics: " + packageName + " lookup failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void putBluetoothValue(JSONObject info, String key, Object value) {
+        try {
+            info.put(key, value);
+        } catch (JSONException e) {
+            LOG.w(TAG, "deviceDiagnostics: could not record " + key);
+        }
     }
 
     private void enableBluetooth(CallbackContext callbackContext) {
