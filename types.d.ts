@@ -100,6 +100,31 @@ declare namespace BLECentralPlugin {
         scanOptions?: Record<string, any>;
     }
 
+    interface DiagnosticReadProbeEvent {
+        event: string;
+        level: 'ERROR' | 'INFO' | 'DEBUG';
+        state: string;
+        elapsedMs: number;
+        status?: number;
+        value?: number;
+        accepted?: boolean;
+        detail?: string;
+    }
+
+    interface DiagnosticReadProbeResult {
+        runId?: string;
+        active?: boolean;
+        transport?: 'direct_native_gatt';
+        serviceUuid?: string;
+        characteristicUuid?: string;
+        sdkInt?: number;
+        readSubmitted?: boolean;
+        terminalReason?: string;
+        elapsedMs?: number;
+        error?: string;
+        events?: DiagnosticReadProbeEvent[];
+    }
+
     interface BLECentralPluginCommon {
         scan(
             services: string[],
@@ -142,6 +167,10 @@ declare namespace BLECentralPlugin {
         stopScan(): Promise<void>;
         disconnect(device_id: string): Promise<void>;
         read(device_id: string, service_uuid: string, characteristic_uuid: string): Promise<ArrayBuffer>;
+        /** Android-only direct GATT read diagnostic; intended for support captures. */
+        diagnosticReadProbe(device_id: string, service_uuid: string, characteristic_uuid: string): Promise<DiagnosticReadProbeResult>;
+        cancelDiagnosticReadProbe(run_id: string): Promise<DiagnosticReadProbeResult>;
+        diagnosticReadProbeResult(): Promise<DiagnosticReadProbeResult>;
         write(device_id: string, service_uuid: string, characteristic_uuid: string, value: ArrayBuffer): Promise<void>;
         writeWithoutResponse(
             device_id: string,
@@ -247,6 +276,24 @@ declare namespace BLECentralPlugin {
             service_uuid: string,
             characteristic_uuid: string,
             success?: (rawData: ArrayBuffer) => any,
+            failure?: (error: string | BLEError) => any
+        ): void;
+
+        /** Android-only direct GATT read diagnostic; intended for support captures. */
+        diagnosticReadProbe(
+            device_id: string,
+            service_uuid: string,
+            characteristic_uuid: string,
+            success?: (result: DiagnosticReadProbeResult) => any,
+            failure?: (error: string | BLEError) => any
+        ): void;
+        cancelDiagnosticReadProbe(
+            run_id: string,
+            success?: (result: DiagnosticReadProbeResult) => any,
+            failure?: (error: string | BLEError) => any
+        ): void;
+        diagnosticReadProbeResult(
+            success?: (result: DiagnosticReadProbeResult) => any,
             failure?: (error: string | BLEError) => any
         ): void;
 

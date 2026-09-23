@@ -168,6 +168,20 @@ module.exports = {
         exec(success, failure, 'BLE', 'read', [device_id, service_uuid, characteristic_uuid]);
     },
 
+    // Android-only support diagnostic. Uses a fresh BluetoothGatt rather than
+    // the normal Peripheral command queue; it never requests an MTU or writes.
+    diagnosticReadProbe: function (device_id, service_uuid, characteristic_uuid, success, failure) {
+        exec(success, failure, 'BLE', 'diagnosticReadProbe', [device_id, service_uuid, characteristic_uuid]);
+    },
+
+    cancelDiagnosticReadProbe: function (run_id, success, failure) {
+        exec(success, failure, 'BLE', 'cancelDiagnosticReadProbe', [run_id]);
+    },
+
+    diagnosticReadProbeResult: function (success, failure) {
+        exec(success, failure, 'BLE', 'diagnosticReadProbeResult', []);
+    },
+
     // RSSI value comes back as an integer
     readRSSI: function (device_id, success, failure) {
         exec(success, failure, 'BLE', 'readRSSI', [device_id]);
@@ -334,6 +348,24 @@ module.exports.withPromises = {
     read: function (device_id, service_uuid, characteristic_uuid) {
         return new Promise(function (resolve, reject) {
             module.exports.read(device_id, service_uuid, characteristic_uuid, resolve, reject);
+        });
+    },
+
+    diagnosticReadProbe: function (device_id, service_uuid, characteristic_uuid) {
+        return new Promise(function (resolve, reject) {
+            module.exports.diagnosticReadProbe(device_id, service_uuid, characteristic_uuid, resolve, reject);
+        });
+    },
+
+    cancelDiagnosticReadProbe: function (run_id) {
+        return new Promise(function (resolve, reject) {
+            module.exports.cancelDiagnosticReadProbe(run_id, resolve, reject);
+        });
+    },
+
+    diagnosticReadProbeResult: function () {
+        return new Promise(function (resolve, reject) {
+            module.exports.diagnosticReadProbeResult(resolve, reject);
         });
     },
 

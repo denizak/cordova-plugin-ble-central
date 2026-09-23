@@ -106,6 +106,11 @@ public class BLECentralPlugin extends CordovaPlugin {
     private static final String START_STATE_NOTIFICATIONS = "startStateNotifications";
     private static final String STOP_STATE_NOTIFICATIONS = "stopStateNotifications";
 
+    // Android-only diagnostic actions. The runner deliberately bypasses Peripheral.
+    private static final String DIAGNOSTIC_READ_PROBE = "diagnosticReadProbe";
+    private static final String CANCEL_DIAGNOSTIC_READ_PROBE = "cancelDiagnosticReadProbe";
+    private static final String DIAGNOSTIC_READ_PROBE_RESULT = "diagnosticReadProbeResult";
+
     private static final String OPEN_L2CAP = "openL2Cap";
     private static final String CLOSE_L2CAP = "closeL2Cap";
     private static final String RECEIVE_L2CAP = "receiveDataL2Cap";
@@ -122,6 +127,7 @@ public class BLECentralPlugin extends CordovaPlugin {
     private static final int REQUEST_ENABLE_BLUETOOTH = 1;
 
     BluetoothAdapter bluetoothAdapter;
+    private GattReadProbeRunner diagnosticReadProbeRunner;
 
     // key is the MAC Address
     Map<String, Peripheral> peripherals = new LinkedHashMap<String, Peripheral>();
@@ -169,11 +175,13 @@ public class BLECentralPlugin extends CordovaPlugin {
             Context context = cordova.getContext();
             COMPILE_SDK_VERSION = context.getApplicationContext().getApplicationInfo().targetSdkVersion;
         }
+        diagnosticReadProbeRunner = new GattReadProbeRunner(cordova.getContext());
     }
 
     @SuppressLint("MissingPermission")
     @Override
     public void onDestroy() {
+        if (diagnosticReadProbeRunner != null) diagnosticReadProbeRunner.shutdown("plugin_destroyed");
         removeStateListener();
         removeLocationStateListener();
         removeBondStateListener();
@@ -185,6 +193,7 @@ public class BLECentralPlugin extends CordovaPlugin {
     @SuppressLint("MissingPermission")
     @Override
     public void onReset() {
+        if (diagnosticReadProbeRunner != null) diagnosticReadProbeRunner.shutdown("webview_reset");
         removeStateListener();
         removeLocationStateListener();
         removeBondStateListener();
@@ -210,6 +219,35 @@ public class BLECentralPlugin extends CordovaPlugin {
             }
             BluetoothManager bluetoothManager = (BluetoothManager) activity.getSystemService(Context.BLUETOOTH_SERVICE);
             bluetoothAdapter = bluetoothManager.getAdapter();
+        }
+
+        if (action.equals(DIAGNOSTIC_READ_PROBE)) {
+            if (!canStartDiagnosticReadProbe(callbackContext)) return true;
+            try {
+                String macAddress = args.getString(0);
+                UUID serviceUUID = uuidFromString(args.getString(1));
+                UUID characteristicUUID = uuidFromString(args.getString(2));
+                stopScan();
+                diagnosticReadProbeRunner.start(callbackContext, bluetoothAdapter.getRemoteDevice(macAddress), serviceUUID, characteristicUUID);
+            } catch (IllegalArgumentException error) {
+                callbackContext.error("Invalid diagnostic GATT probe address or UUID: " + error.getMessage());
+            }
+            return true;
+        }
+
+        if (action.equals(CANCEL_DIAGNOSTIC_READ_PROBE)) {
+            diagnosticReadProbeRunner.cancel(args.getString(0), callbackContext);
+            return true;
+        }
+
+        if (action.equals(DIAGNOSTIC_READ_PROBE_RESULT)) {
+            diagnosticReadProbeRunner.getLastResult(callbackContext);
+            return true;
+        }
+
+        if (diagnosticReadProbeRunner != null && diagnosticReadProbeRunner.isActive() && isBlockedByDiagnosticProbe(action)) {
+            callbackContext.error("Diagnostic GATT probe is active; normal BLE connection and scanning are temporarily unavailable");
+            return true;
         }
 
         boolean validAction = true;
@@ -565,6 +603,37 @@ public class BLECentralPlugin extends CordovaPlugin {
         }
 
         return validAction;
+    }
+
+    @SuppressLint("MissingPermission")
+    private boolean canStartDiagnosticReadProbe(CallbackContext callbackContext) {
+        if (diagnosticReadProbeRunner == null) {
+            callbackContext.error("Diagnostic GATT probe is not initialized");
+            return false;
+        }
+        if (diagnosticReadProbeRunner.isActive()) {
+            callbackContext.error("A diagnostic GATT probe is already active");
+            return false;
+        }
+        if (COMPILE_SDK_VERSION >= 31 && Build.VERSION.SDK_INT >= 31 && !PermissionHelper.hasPermission(this, BLUETOOTH_CONNECT)) {
+            callbackContext.error("BLUETOOTH_CONNECT permission is required for the diagnostic GATT probe");
+            return false;
+        }
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
+            callbackContext.error("Bluetooth is disabled");
+            return false;
+        }
+        for (Peripheral peripheral : peripherals.values()) {
+            if (peripheral.isConnected() || peripheral.isConnecting()) {
+                callbackContext.error("Disconnect the active BLE session before starting a diagnostic GATT probe");
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isBlockedByDiagnosticProbe(String action) {
+        return action.equals(CONNECT) || action.equals(AUTOCONNECT) || action.equals(START_SCAN_WITH_OPTIONS);
     }
 
     private void enableBluetooth(CallbackContext callbackContext) {
